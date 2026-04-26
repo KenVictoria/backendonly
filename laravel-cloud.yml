@@ -23,8 +23,8 @@ environment:
 
 # Database (Laravel Cloud handles this automatically)
 database:
-  engine: mysql
-  version: "8.0"
+  engine: postgres
+  version: "18"
 
 # PHP version
 php: "8.2"
