@@ -32,7 +32,6 @@ class Student extends Authenticatable
         return [
             'affiliations' => 'array',
             'skills' => 'array',
-            'password' => 'hashed',
         ];
     }
 
