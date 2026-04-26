@@ -21,12 +21,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);
     Route::put('/student/account', [AuthController::class, 'updateStudentAccount'])->middleware('role:student');
 
-    Route::middleware(['role:admin'])->group(function () {
-        Route::apiResource('users', UserController::class);
-    });
-
-    // Role options accessible by all management roles
     Route::middleware(['role:admin,dean,secretary'])->group(function () {
+        Route::apiResource('users', UserController::class);
         Route::get('users/role-options', [UserController::class, 'roleOptions']);
     });
 
@@ -42,7 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('students/{student}', [StudentController::class, 'show']);
     });
 
-    // Sections - accessible by admin, dean, secretary (REMOVED DUPLICATE)
+    // Sections - accessible by admin, dean, secretary
     Route::middleware(['role:admin,dean,secretary'])->group(function () {
         Route::apiResource('sections', SectionController::class);
         Route::get('sections/{section}/available-students', [SectionController::class, 'getAvailableStudents']);
