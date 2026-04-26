@@ -71,24 +71,54 @@ class ScheduleController extends Controller
         return response()->json($schedule->load(['course', 'section', 'room', 'faculty']));
     }
 
-    public function update(Request $request, Schedule $schedule): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        // Find schedule manually to avoid route model binding issues
+        $schedule = Schedule::find($id);
+        
+        if (!$schedule) {
+            return response()->json(['error' => 'Schedule not found'], 404);
+        }
+        
         $data = $this->validated($request, partial: true);
 
         $merged = array_merge($schedule->only([
             'course_id', 'section_id', 'room_id', 'faculty_id',
-            'day_of_week', 'start_time', 'end_time', 'semester', 'school_year'
+            'day_of_week', 'start_time', 'end_time', 'semester',
+            'school_year'
         ]), $data);
 
-        $this->scheduleConflictService->assertNoConflict([
-            'room_id' => (int) $merged['room_id'],
-            'faculty_id' => (int) $merged['faculty_id'],
-            'day_of_week' => (string) $merged['day_of_week'],
-            'start_time' => $this->formatTimeForConflict($merged['start_time']),
-            'end_time' => $this->formatTimeForConflict($merged['end_time']),
-            'semester' => $merged['semester'] ?? $schedule->semester,
+        $conflict = $this->scheduleConflictService->checkConflict(
+            $merged['course_id'],
+            $merged['section_id'],
+            $merged['room_id'],
+            $merged['faculty_id'],
+            $merged['day_of_week'],
+            $this->formatTimeForConflict($merged['start_time']),
+            $this->formatTimeForConflict($merged['end_time']),
+            $merged['semester'],
+            $merged['school_year'],
+            $schedule->id
+        );
+
+        if ($conflict) {
+            return response()->json([
+                'error' => 'Schedule conflict detected',
+                'conflict' => $conflict
+            ], 422);
+        }
+
+        $data = [
+            'course_id' => $merged['course_id'],
+            'section_id' => $merged['section_id'],
+            'room_id' => $merged['room_id'],
+            'faculty_id' => $merged['faculty_id'],
+            'day_of_week' => $merged['day_of_week'],
+            'start_time' => $merged['start_time'],
+            'end_time' => $merged['end_time'],
+            'semester' => $merged['semester'],
             'school_year' => $merged['school_year'] ?? $schedule->school_year,
-        ], $schedule->id);
+        ];
 
         $schedule->update($data);
 
@@ -98,8 +128,12 @@ class ScheduleController extends Controller
         ]);
     }
 
-    public function destroy(Schedule $schedule): Response
+    public function destroy($id): Response
     {
+        $schedule = Schedule::find($id);
+        if (!$schedule) {
+            return response()->json(['error' => 'Schedule not found'], 404);
+        }
         $schedule->delete();
         return response()->noContent();
     }

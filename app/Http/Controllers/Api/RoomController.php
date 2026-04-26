@@ -34,8 +34,15 @@ class RoomController extends Controller
         return response()->json($room);
     }
 
-    public function update(Request $request, Room $room): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        // Find room manually to avoid route model binding issues
+        $room = Room::find($id);
+        
+        if (!$room) {
+            return response()->json(['error' => 'Room not found'], 404);
+        }
+        
         $data = $request->validate([
             'code' => ['sometimes', 'string', 'max:32', 'unique:rooms,code,'.$room->id],
             'name' => ['sometimes', 'string', 'max:255'],
