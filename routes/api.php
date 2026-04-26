@@ -23,6 +23,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware(['role:admin'])->group(function () {
         Route::apiResource('users', UserController::class);
+    });
+
+    // Role options accessible by all management roles
+    Route::middleware(['role:admin,dean,secretary'])->group(function () {
         Route::get('users/role-options', [UserController::class, 'roleOptions']);
     });
 
