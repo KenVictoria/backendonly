@@ -81,6 +81,71 @@ class ScheduleConflictService
         }
     }
 
+    public function checkConflict(array $data, ?int $ignoreScheduleId = null): ?array
+    {
+        $data = $this->preprocessTimes($data);
+
+        $validator = Validator::make($data, [
+            'room_id' => ['required', 'integer', 'exists:rooms,id'],
+            'faculty_id' => ['required', 'integer', 'exists:faculties,id'],
+            'day_of_week' => ['required', 'string', 'max:16'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i'],
+            'semester' => ['sometimes', 'string', 'in:1st,2nd,Summer'],
+            'school_year' => ['sometimes', 'integer', 'digits:4'],
+        ]);
+
+        if ($validator->fails()) {
+            return ['validation_error' => $validator->errors()];
+        }
+
+        $roomId = (int) $data['room_id'];
+        $facultyId = (int) $data['faculty_id'];
+        $day = (string) $data['day_of_week'];
+        $start = $this->normalizeTime((string) $data['start_time']);
+        $end = $this->normalizeTime((string) $data['end_time']);
+        $semester = $data['semester'] ?? null;
+        $schoolYear = $data['school_year'] ?? null;
+
+        if ($this->toComparable($start)->gte($this->toComparable($end))) {
+            return ['validation_error' => ['end_time' => ['End time must be after start time.']]];
+        }
+
+        $query = Schedule::query()
+            ->where('day_of_week', $day)
+            ->where(function ($q) use ($roomId, $facultyId) {
+                $q->where('room_id', $roomId)
+                    ->orWhere('faculty_id', $facultyId);
+            });
+
+        if ($semester) {
+            $query->where('semester', $semester);
+        }
+        if ($schoolYear) {
+            $query->where('school_year', $schoolYear);
+        }
+
+        if ($ignoreScheduleId !== null) {
+            $query->where('id', '!=', $ignoreScheduleId);
+        }
+
+        $conflicts = [];
+        
+        foreach ($query->cursor() as $existing) {
+            if ($this->intervalsOverlap($start, $end, $existing->start_time, $existing->end_time)) {
+                $conflictType = $existing->room_id == $roomId ? 'room' : 'faculty';
+                $conflicts[] = [
+                    'type' => $conflictType,
+                    'message' => $conflictType === 'room' 
+                        ? "Room {$existing->room->room_code} is already booked on {$existing->day_of_week} from {$existing->time_slot}"
+                        : "Faculty {$existing->faculty->name} is already assigned on {$existing->day_of_week} from {$existing->time_slot}"
+                ];
+            }
+        }
+
+        return !empty($conflicts) ? $conflicts : null;
+    }
+
     public function intervalsOverlap(string $startA, string $endA, mixed $startB, mixed $endB): bool
     {
         $sb = $this->normalizeFromModel($startB);
