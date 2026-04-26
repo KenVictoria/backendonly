@@ -61,8 +61,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('courses/{course}', [CourseController::class, 'show']);
     });
 
-    // Admin and Dean only routes
-    Route::middleware(['role:admin,dean'])->group(function () {
+    // Admin, Dean, and Secretary routes
+    Route::middleware(['role:admin,dean,secretary'])->group(function () {
         Route::apiResource('faculties', FacultyController::class);
         Route::post('courses', [CourseController::class, 'store']);
         Route::put('courses/{course}', [CourseController::class, 'update']);
