@@ -34,11 +34,19 @@ class FacultyController extends Controller
         return response()->json($faculty);
     }
 
-    public function update(Request $request, Faculty $faculty): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
         try {
             // Debug: Log faculty ID and request data
-            \Log::info('Updating faculty', ['faculty_id' => $faculty->id, 'request_data' => $request->all()]);
+            \Log::info('Updating faculty', ['faculty_id' => $id, 'request_data' => $request->all()]);
+            
+            // Find faculty manually to avoid route model binding issues
+            $faculty = Faculty::find($id);
+            
+            if (!$faculty) {
+                \Log::error('Faculty not found', ['faculty_id' => $id]);
+                return response()->json(['error' => 'Faculty not found'], 404);
+            }
             
             $data = $request->validate([
                 'name' => ['sometimes', 'string', 'max:255'],
@@ -46,12 +54,6 @@ class FacultyController extends Controller
                 'employee_id' => ['sometimes', 'string', 'max:64', 'unique:faculties,employee_id,'.$faculty->id],
                 'department' => ['sometimes', 'string', 'in:BSIT,BSCS'],
             ]);
-
-            // Check if faculty exists
-            if (!$faculty) {
-                \Log::error('Faculty not found', ['faculty_id' => $faculty->id]);
-                return response()->json(['error' => 'Faculty not found'], 404);
-            }
 
             $faculty->update($data);
 
@@ -80,10 +82,18 @@ class FacultyController extends Controller
         }
     }
 
-    public function destroy(Faculty $faculty): Response
+    public function destroy($id): JsonResponse
     {
         try {
-            \Log::info('Deleting faculty', ['faculty_id' => $faculty->id]);
+            \Log::info('Deleting faculty', ['faculty_id' => $id]);
+            
+            // Find faculty manually to avoid route model binding issues
+            $faculty = Faculty::find($id);
+            
+            if (!$faculty) {
+                \Log::error('Faculty not found', ['faculty_id' => $id]);
+                return response('', 404);
+            }
             
             // Check if faculty has related schedules
             $scheduleCount = $faculty->schedules()->count();
@@ -92,10 +102,7 @@ class FacultyController extends Controller
                     'faculty_id' => $faculty->id,
                     'schedule_count' => $scheduleCount
                 ]);
-                return response()->json([
-                    'error' => 'Cannot delete faculty',
-                    'message' => "This faculty has {$scheduleCount} scheduled classes. Remove or reassign the schedules first."
-                ], 422);
+                return response('', 422);
             }
 
             $faculty->delete();
@@ -105,22 +112,16 @@ class FacultyController extends Controller
             
         } catch (\Illuminate\Database\QueryException $e) {
             \Log::error('Database error deleting faculty', [
-                'faculty_id' => $faculty->id,
+                'faculty_id' => $id,
                 'error' => $e->getMessage()
             ]);
-            return response()->json([
-                'error' => 'Database constraint error',
-                'message' => 'Cannot delete this faculty due to database constraints'
-            ], 422);
+            return response('', 422);
         } catch (\Exception $e) {
             \Log::error('General error deleting faculty', [
-                'faculty_id' => $faculty->id,
+                'faculty_id' => $id,
                 'error' => $e->getMessage()
             ]);
-            return response()->json([
-                'error' => 'Delete failed',
-                'message' => $e->getMessage()
-            ], 500);
+            return response('', 500);
         }
     }
 }
