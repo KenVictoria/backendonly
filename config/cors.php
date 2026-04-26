@@ -11,6 +11,7 @@ return [
         'http://localhost:5173',
         'https://frontendonly-ochre.vercel.app',
         'https://*.vercel.app',
+        'https://backendonly-master-tioocy.free.laravel.cloud',
     ],
 
     'allowed_origins_patterns' => [],
