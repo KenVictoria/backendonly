@@ -10,6 +10,7 @@ return [
         'http://localhost:3000',
         'http://localhost:5173',
         'https://frontendonly-ochre.vercel.app',
+        'https://*.vercel.app',
     ],
 
     'allowed_origins_patterns' => [],
@@ -20,6 +21,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];
