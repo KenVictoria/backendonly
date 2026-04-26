@@ -6,9 +6,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_filter([
-        env('FRONTEND_URL', 'http://localhost:5173'),
-    ]),
+    'allowed_origins' => [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://frontendonly-ochre.vercel.app',
+    ],
 
     'allowed_origins_patterns' => [],
 
