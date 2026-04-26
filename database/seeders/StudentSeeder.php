@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Student;
 use Illuminate\Database\Seeder;
-use Faker\Factory as Faker;
 use Illuminate\Support\Facades\Hash;
 
 class StudentSeeder extends Seeder
@@ -14,8 +13,6 @@ class StudentSeeder extends Seeder
      */
     public function run(): void
     {
-        $faker = Faker::create('en_PH');
-        
         // Skills arrays
         $allSkills = [
             'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go', 'Swift', 'Kotlin',
@@ -73,14 +70,14 @@ class StudentSeeder extends Seeder
         for ($i = 1; $i <= 1000; $i++) {
             // Generate random skills (2-6 skills)
             $numSkills = rand(2, 6);
-            $skills = $faker->randomElements($allSkills, $numSkills);
+            $skills = $this->randomElements($allSkills, $numSkills);
             
             // Generate random affiliations (0-4 affiliations)
             $numAffiliations = rand(0, 4);
-            $affiliations = $numAffiliations > 0 ? $faker->randomElements($allAffiliations, $numAffiliations) : [];
+            $affiliations = $numAffiliations > 0 ? $this->randomElements($allAffiliations, $numAffiliations) : [];
             
             // Generate random hobby
-            $hobby = $faker->randomElement($allHobbies);
+            $hobby = $this->randomElement($allHobbies);
             
             // Generate grade remark based on weighted distribution
             $gradeRemark = $this->getWeightedRandom($gradeRemarks);
@@ -88,13 +85,13 @@ class StudentSeeder extends Seeder
             // Generate violations (null for most students, text for some)
             $violations = null;
             if (rand(1, 100) <= 15) { // 15% have violations
-                $violations = $this->getViolationDescription($faker);
+                $violations = $this->getViolationDescription();
             }
             
             // Generate unique student ID
             do {
                 $year = rand(2020, 2024);
-                $department = $faker->randomElement($departments);
+                $department = $this->randomElement($departments);
                 $studentNumber = str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
                 $studentId = "{$year}-{$department}-{$studentNumber}";
             } while (in_array($studentId, $existingStudentIds));
@@ -102,20 +99,16 @@ class StudentSeeder extends Seeder
             $existingStudentIds[] = $studentId;
             
             // Generate unique email
-            $firstName = strtolower($faker->firstName());
-            $lastName = strtolower($faker->lastName());
-            $email = "{$firstName}.{$lastName}@student.ccs.edu";
-            
-            // Make email unique by adding number if duplicate
-            $originalEmail = $email;
-            $counter = 1;
-            while (Student::where('email', $email)->exists()) {
-                $email = str_replace('@', "{$counter}@", $originalEmail);
-                $counter++;
-            }
+            $firstNames = ['alex', 'jamie', 'sarah', 'john', 'maria', 'david', 'lisa', 'mike', 'anna', 'paul'];
+            $lastNames = ['rivera', 'cruz', 'santos', 'reyes', 'mendoza', 'flores', 'torres', 'garcia', 'lopez', 'martinez'];
+            $firstName = $this->randomElement($firstNames);
+            $lastName = $this->randomElement($lastNames);
+            $email = "{$firstName}.{$lastName}{$i}@student.ccs.edu";
             
             // Generate name
-            $name = $faker->name();
+            $fullNames = ['Alex Rivera', 'Jamie Cruz', 'Sarah Santos', 'John Reyes', 'Maria Mendoza', 
+                         'David Flores', 'Lisa Torres', 'Mike Garcia', 'Anna Lopez', 'Paul Martinez'];
+            $name = $this->randomElement($fullNames) . " {$i}";
             
             $students[] = [
                 'student_id' => $studentId,
@@ -169,7 +162,7 @@ class StudentSeeder extends Seeder
     /**
      * Get violation description
      */
-    private function getViolationDescription($faker): string
+    private function getViolationDescription(): string
     {
         $violations = [
             'Late submission of requirements',
@@ -185,8 +178,34 @@ class StudentSeeder extends Seeder
         ];
         
         $numViolations = rand(1, 3);
-        $selectedViolations = $faker->randomElements($violations, $numViolations);
+        $selectedViolations = $this->randomElements($violations, $numViolations);
         
         return implode('; ', $selectedViolations);
+    }
+    
+    /**
+     * Get random element from array
+     */
+    private function randomElement(array $array): string
+    {
+        return $array[array_rand($array)];
+    }
+    
+    /**
+     * Get random elements from array
+     */
+    private function randomElements(array $array, int $count): array
+    {
+        $keys = array_rand($array, $count);
+        if (!is_array($keys)) {
+            $keys = [$keys];
+        }
+        
+        $result = [];
+        foreach ($keys as $key) {
+            $result[] = $array[$key];
+        }
+        
+        return $result;
     }
 }
