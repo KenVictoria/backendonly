@@ -100,8 +100,15 @@ class UserController extends Controller
     /**
      * Update the specified user
      */
-    public function update(Request $request, User $user): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        // Find user manually to avoid route model binding issues
+        $user = User::find($id);
+        
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+        
         $rules = [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
@@ -146,8 +153,15 @@ class UserController extends Controller
     /**
      * Remove the specified user
      */
-    public function destroy(User $user): Response
+    public function destroy($id): JsonResponse
     {
+        // Find user manually to avoid route model binding issues
+        $user = User::find($id);
+        
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+        
         // Prevent deleting own account
         if ($user->id === auth()->id()) {
             return response()->json([
@@ -167,7 +181,7 @@ class UserController extends Controller
         
         $user->delete();
         
-        return response()->noContent();
+        return response()->json(['message' => 'User deleted successfully']);
     }
     
     /**
