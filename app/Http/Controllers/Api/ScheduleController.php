@@ -73,69 +73,94 @@ class ScheduleController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        // Find schedule manually to avoid route model binding issues
-        $schedule = Schedule::find($id);
-        
-        if (!$schedule) {
-            return response()->json(['error' => 'Schedule not found'], 404);
-        }
-        
-        $data = $this->validated($request, partial: true);
+        try {
+            Log::info('Schedule update started', ['id' => $id, 'request_data' => $request->all()]);
+            
+            // Find schedule manually to avoid route model binding issues
+            $schedule = Schedule::find($id);
+            
+            if (!$schedule) {
+                Log::error('Schedule not found', ['id' => $id]);
+                return response()->json(['error' => 'Schedule not found'], 404);
+            }
+            
+            Log::info('Schedule found', ['schedule' => $schedule->toArray()]);
+            
+            $data = $this->validated($request, partial: true);
+            Log::info('Validated data', ['data' => $data]);
 
-        $merged = array_merge($schedule->only([
-            'course_id', 'section_id', 'room_id', 'faculty_id',
-            'day_of_week', 'start_time', 'end_time', 'semester',
-            'school_year'
-        ]), $data);
+            $merged = array_merge($schedule->only([
+                'course_id', 'section_id', 'room_id', 'faculty_id',
+                'day_of_week', 'start_time', 'end_time', 'semester',
+                'school_year'
+            ]), $data);
+            
+            Log::info('Merged data', ['merged' => $merged]);
 
-        $conflict = $this->scheduleConflictService->checkConflict(
-            $merged['course_id'],
-            $merged['section_id'],
-            $merged['room_id'],
-            $merged['faculty_id'],
-            $merged['day_of_week'],
-            $this->formatTimeForConflict($merged['start_time']),
-            $this->formatTimeForConflict($merged['end_time']),
-            $merged['semester'],
-            $merged['school_year'],
-            $schedule->id
-        );
+            $conflict = $this->scheduleConflictService->checkConflict([
+                'room_id' => $merged['room_id'],
+                'faculty_id' => $merged['faculty_id'],
+                'day_of_week' => $merged['day_of_week'],
+                'start_time' => $this->formatTimeForConflict($merged['start_time']),
+                'end_time' => $this->formatTimeForConflict($merged['end_time']),
+                'semester' => $merged['semester'],
+                'school_year' => $merged['school_year'],
+            ], $schedule->id);
+            
+            Log::info('Conflict check result', ['conflict' => $conflict]);
 
-        if ($conflict) {
+            if ($conflict) {
+                return response()->json([
+                    'error' => 'Schedule conflict detected',
+                    'conflict' => $conflict
+                ], 422);
+            }
+
+            $updateData = [
+                'course_id' => $merged['course_id'],
+                'section_id' => $merged['section_id'],
+                'room_id' => $merged['room_id'],
+                'faculty_id' => $merged['faculty_id'],
+                'day_of_week' => $merged['day_of_week'],
+                'start_time' => $merged['start_time'],
+                'end_time' => $merged['end_time'],
+                'semester' => $merged['semester'],
+                'school_year' => $merged['school_year'] ?? $schedule->school_year,
+            ];
+            
+            Log::info('Updating schedule', ['update_data' => $updateData]);
+
+            $schedule->update($updateData);
+            
+            Log::info('Schedule updated successfully', ['schedule' => $schedule->fresh()->toArray()]);
+
             return response()->json([
-                'error' => 'Schedule conflict detected',
-                'conflict' => $conflict
-            ], 422);
+                'message' => 'Schedule updated successfully',
+                'schedule' => $schedule->fresh()->load(['course', 'section', 'room', 'faculty'])
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Schedule update error', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Update failed',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        $data = [
-            'course_id' => $merged['course_id'],
-            'section_id' => $merged['section_id'],
-            'room_id' => $merged['room_id'],
-            'faculty_id' => $merged['faculty_id'],
-            'day_of_week' => $merged['day_of_week'],
-            'start_time' => $merged['start_time'],
-            'end_time' => $merged['end_time'],
-            'semester' => $merged['semester'],
-            'school_year' => $merged['school_year'] ?? $schedule->school_year,
-        ];
-
-        $schedule->update($data);
-
-        return response()->json([
-            'message' => 'Schedule updated successfully',
-            'schedule' => $schedule->fresh()->load(['course', 'section', 'room', 'faculty'])
-        ]);
     }
 
-    public function destroy($id): Response
+    public function destroy($id): JsonResponse
     {
         $schedule = Schedule::find($id);
         if (!$schedule) {
             return response()->json(['error' => 'Schedule not found'], 404);
         }
         $schedule->delete();
-        return response()->noContent();
+        return response()->json(['message' => 'Schedule deleted successfully']);
     }
 
     /**
