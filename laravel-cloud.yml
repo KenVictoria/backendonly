@@ -11,7 +11,7 @@ build:
 # Deploy configuration
 deploy:
   - "php artisan migrate --force"
-  - "php artisan db:seed --force"
+  - "php artisan db:seed --class=DatabaseSeeder --force"
   - "php artisan storage:link"
 
 # Environment variables
