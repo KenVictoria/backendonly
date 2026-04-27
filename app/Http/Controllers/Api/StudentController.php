@@ -12,34 +12,38 @@ class StudentController extends Controller
 {
     public function filterOptions(): JsonResponse
     {
-        $skills = Student::query()
-            ->whereNotNull('skills')
-            ->pluck('skills')
-            ->flatten()
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values();
+        try {
+            $skills = Student::query()
+                ->whereNotNull('skills')
+                ->pluck('skills')
+                ->flatten()
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values();
 
-        $remarks = Student::query()
-            ->whereNotNull('grade_remarks')
-            ->where('grade_remarks', '!=', '')
-            ->distinct()
-            ->orderBy('grade_remarks')
-            ->pluck('grade_remarks')
-            ->values();
+            $remarks = Student::query()
+                ->whereNotNull('grade_remarks')
+                ->where('grade_remarks', '!=', '')
+                ->distinct()
+                ->orderBy('grade_remarks')
+                ->pluck('grade_remarks')
+                ->values();
 
-        $departments = Student::query()
-            ->distinct()
-            ->orderBy('department')
-            ->pluck('department')
-            ->values();
+            $departments = Student::query()
+                ->distinct()
+                ->orderBy('department')
+                ->pluck('department')
+                ->values();
 
-        return response()->json([
-            'skills' => $skills,
-            'grade_remarks' => $remarks,
-            'departments' => $departments,
-        ]);
+            return response()->json([
+                'skills' => $skills,
+                'grade_remarks' => $remarks,
+                'departments' => $departments,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function index(Request $request): JsonResponse
@@ -88,13 +92,22 @@ class StudentController extends Controller
         return response()->json($student, Response::HTTP_CREATED);
     }
 
-    public function show(Student $student): JsonResponse
+    public function show($id): JsonResponse
     {
+        $student = Student::find($id);
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
         return response()->json($student);
     }
 
-    public function update(Request $request, Student $student): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        $student = Student::find($id);
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+
         $data = $this->validated($request, $student->id);
 
         $student->update($data);
@@ -102,11 +115,16 @@ class StudentController extends Controller
         return response()->json($student->fresh());
     }
 
-    public function destroy(Student $student): Response
+    public function destroy($id): JsonResponse
     {
+        $student = Student::find($id);
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+
         $student->delete();
 
-        return response()->noContent();
+        return response()->json(['message' => 'Student deleted successfully']);
     }
 
     /**
