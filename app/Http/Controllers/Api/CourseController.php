@@ -38,13 +38,22 @@ class CourseController extends Controller
         return response()->json($course, Response::HTTP_CREATED);
     }
 
-    public function show(Course $course): JsonResponse
+    public function show($id): JsonResponse
     {
+        $course = Course::find($id);
+        if (!$course) {
+            return response()->json(['error' => 'Course not found'], 404);
+        }
         return response()->json($course);
     }
 
-    public function update(Request $request, Course $course): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        $course = Course::find($id);
+        if (!$course) {
+            return response()->json(['error' => 'Course not found'], 404);
+        }
+
         $data = $request->validate([
             'code' => ['sometimes', 'string', 'max:32', 'unique:courses,code,' . $course->id],
             'title' => ['sometimes', 'string', 'max:255'],
@@ -56,12 +65,17 @@ class CourseController extends Controller
         ]);
 
         $course->update($data);
-        return response()->json($course);
+        return response()->json($course->fresh());
     }
 
-    public function destroy(Course $course): Response
+    public function destroy($id): JsonResponse
     {
+        $course = Course::find($id);
+        if (!$course) {
+            return response()->json(['error' => 'Course not found'], 404);
+        }
+
         $course->delete();
-        return response()->noContent();
+        return response()->json(['message' => 'Course deleted successfully']);
     }
 }
