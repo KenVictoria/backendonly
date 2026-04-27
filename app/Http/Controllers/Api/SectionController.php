@@ -286,7 +286,7 @@ class SectionController extends Controller
 
             $students = Student::whereDoesntHave('sections', function ($query) use ($section) {
                 $query->where('section_id', $section->id);
-            })->orderBy('name')->get(['id', 'name', 'student_id']);
+            })->orderBy('name')->get(['id', 'name', 'student_id', 'email']);
 
             return response()->json($students);
         } catch (\Exception $e) {
