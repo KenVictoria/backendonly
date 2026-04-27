@@ -29,8 +29,12 @@ class RoomController extends Controller
         return response()->json($room, Response::HTTP_CREATED);
     }
 
-    public function show(Room $room): JsonResponse
+    public function show($id): JsonResponse
     {
+        $room = Room::find($id);
+        if (!$room) {
+            return response()->json(['error' => 'Room not found'], 404);
+        }
         return response()->json($room);
     }
 
@@ -55,10 +59,14 @@ class RoomController extends Controller
         return response()->json($room->fresh());
     }
 
-    public function destroy(Room $room): Response
+    public function destroy($id): JsonResponse
     {
+        $room = Room::find($id);
+        if (!$room) {
+            return response()->json(['error' => 'Room not found'], 404);
+        }
+        
         $room->delete();
-
-        return response()->noContent();
+        return response()->json(['message' => 'Room deleted successfully']);
     }
 }
