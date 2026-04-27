@@ -29,8 +29,12 @@ class FacultyController extends Controller
         return response()->json($faculty, Response::HTTP_CREATED);
     }
 
-    public function show(Faculty $faculty): JsonResponse
+    public function show($id): JsonResponse
     {
+        $faculty = Faculty::find($id);
+        if (!$faculty) {
+            return response()->json(['error' => 'Faculty not found'], 404);
+        }
         return response()->json($faculty);
     }
 
@@ -92,7 +96,7 @@ class FacultyController extends Controller
             
             if (!$faculty) {
                 \Log::error('Faculty not found', ['faculty_id' => $id]);
-                return response('', 404);
+                return response()->json(['error' => 'Faculty not found'], 404);
             }
             
             // Check if faculty has related schedules
@@ -102,26 +106,35 @@ class FacultyController extends Controller
                     'faculty_id' => $faculty->id,
                     'schedule_count' => $scheduleCount
                 ]);
-                return response('', 422);
+                return response()->json([
+                    'message' => 'Cannot delete faculty with existing schedules',
+                    'schedule_count' => $scheduleCount
+                ], 422);
             }
 
             $faculty->delete();
             \Log::info('Faculty deleted successfully', ['faculty_id' => $faculty->id]);
             
-            return response()->noContent();
+            return response()->json(['message' => 'Faculty deleted successfully']);
             
         } catch (\Illuminate\Database\QueryException $e) {
             \Log::error('Database error deleting faculty', [
                 'faculty_id' => $id,
                 'error' => $e->getMessage()
             ]);
-            return response('', 422);
+            return response()->json([
+                'error' => 'Database constraint error',
+                'message' => 'This faculty cannot be deleted due to existing schedules or other constraints'
+            ], 422);
         } catch (\Exception $e) {
             \Log::error('General error deleting faculty', [
                 'faculty_id' => $id,
                 'error' => $e->getMessage()
             ]);
-            return response('', 500);
+            return response()->json([
+                'error' => 'Delete failed',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }
