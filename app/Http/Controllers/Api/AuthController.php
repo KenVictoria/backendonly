@@ -25,10 +25,31 @@ class AuthController extends Controller
             $authenticatable = Student::query()->where('email', $credentials['email'])->first();
         }
 
-        if ($authenticatable === null || ! Hash::check($credentials['password'], $authenticatable->password)) {
+        if ($authenticatable === null) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['No account found with this email.'],
             ]);
+        }
+
+        // Check if password is properly hashed, if not, hash it now
+        if (substr($authenticatable->password, 0, 1) !== '$') {
+            // Password is not hashed, hash it now
+            $authenticatable->password = Hash::make($authenticatable->password);
+            $authenticatable->save();
+            
+            // Now check with the newly hashed password
+            if (! Hash::check($credentials['password'], $authenticatable->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+        } else {
+            // Password is already hashed, check normally
+            if (! Hash::check($credentials['password'], $authenticatable->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
         }
 
         $authenticatable->tokens()->delete();
