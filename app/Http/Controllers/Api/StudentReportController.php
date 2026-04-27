@@ -45,18 +45,36 @@ class StudentReportController extends Controller
 
     public function pdf(Request $request): Response
     {
-        $students = Student::query()
-            ->filtered($request)
-            ->orderBy('name')
-            ->get();
+        try {
+            \Log::info('PDF export request', ['params' => $request->all()]);
+            
+            $students = Student::query()
+                ->filtered($request)
+                ->orderBy('name')
+                ->get();
 
-        $pdf = Pdf::loadView('reports.students_pdf', [
-            'students' => $students,
-            'generatedAt' => now()->toDateTimeString(),
-        ])->setPaper('a4', 'landscape');
+            \Log::info('Students retrieved for PDF', ['count' => $students->count()]);
 
-        $filename = 'ccs-student-report-'.now()->format('Y-m-d_His').'.pdf';
+            $pdf = Pdf::loadView('reports.students_pdf', [
+                'students' => $students,
+                'generatedAt' => now()->toDateTimeString(),
+            ])->setPaper('a4', 'landscape');
 
-        return $pdf->download($filename);
+            $filename = 'ccs-student-report-'.now()->format('Y-m-d_His').'.pdf';
+
+            \Log::info('PDF generated successfully', ['filename' => $filename]);
+
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            \Log::error('PDF generation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_params' => $request->all()
+            ]);
+            
+            return response()->json([
+                'error' => 'PDF generation failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
