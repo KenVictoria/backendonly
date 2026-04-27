@@ -31,13 +31,22 @@ class EventController extends Controller
         return response()->json($event, Response::HTTP_CREATED);
     }
 
-    public function show(Event $event): JsonResponse
+    public function show($id): JsonResponse
     {
+        $event = Event::find($id);
+        if (!$event) {
+            return response()->json(['error' => 'Event not found'], 404);
+        }
         return response()->json($event);
     }
 
-    public function update(Request $request, Event $event): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        $event = Event::find($id);
+        if (!$event) {
+            return response()->json(['error' => 'Event not found'], 404);
+        }
+
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -51,9 +60,13 @@ class EventController extends Controller
         return response()->json($event->fresh());
     }
 
-    public function destroy(Event $event): Response
+    public function destroy($id): JsonResponse
     {
+        $event = Event::find($id);
+        if (!$event) {
+            return response()->json(['error' => 'Event not found'], 404);
+        }
         $event->delete();
-        return response()->noContent();
+        return response()->json(['message' => 'Event deleted successfully']);
     }
 }

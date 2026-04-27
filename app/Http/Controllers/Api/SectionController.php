@@ -164,9 +164,14 @@ class SectionController extends Controller
     /**
      * Display the specified section
      */
-    public function show(Section $section): JsonResponse
+    public function show($id): JsonResponse
     {
         try {
+            $section = Section::find($id);
+            if (!$section) {
+                return response()->json(['error' => 'Section not found'], 404);
+            }
+            
             $section->load(['course', 'students']);
             
             return response()->json([
@@ -194,9 +199,14 @@ class SectionController extends Controller
     /**
      * Update the specified section
      */
-    public function update(Request $request, Section $section): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
         try {
+            $section = Section::find($id);
+            if (!$section) {
+                return response()->json(['error' => 'Section not found'], 404);
+            }
+            
             $validated = $request->validate([
                 'course_id' => 'sometimes|exists:courses,id',
                 'name' => 'sometimes|string|max:255',
@@ -241,18 +251,23 @@ class SectionController extends Controller
     /**
      * Remove the specified section
      */
-    public function destroy(Section $section): Response
+    public function destroy($id): JsonResponse
     {
         try {
+            $section = Section::find($id);
+            if (!$section) {
+                return response()->json(['error' => 'Section not found'], 404);
+            }
+
             // Check if section has students
             if ($section->students()->count() > 0) {
                 return response()->json([
                     'message' => 'Cannot delete section that has enrolled students'
                 ], 422);
             }
-            
+
             $section->delete();
-            return response()->noContent();
+            return response()->json(['message' => 'Section deleted successfully']);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -261,13 +276,18 @@ class SectionController extends Controller
     /**
      * Get students that can be added to a section
      */
-    public function getAvailableStudents(Section $section): JsonResponse
+    public function getAvailableStudents($id): JsonResponse
     {
         try {
-            $students = Student::whereDoesntHave('sections', function($query) use ($section) {
+            $section = Section::find($id);
+            if (!$section) {
+                return response()->json(['error' => 'Section not found'], 404);
+            }
+
+            $students = Student::whereDoesntHave('sections', function ($query) use ($section) {
                 $query->where('section_id', $section->id);
             })->orderBy('name')->get(['id', 'name', 'student_id']);
-            
+
             return response()->json($students);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -277,24 +297,29 @@ class SectionController extends Controller
     /**
      * Add students to section
      */
-    public function addStudents(Request $request, Section $section): JsonResponse
+    public function addStudents(Request $request, $id): JsonResponse
     {
         try {
+            $section = Section::find($id);
+            if (!$section) {
+                return response()->json(['error' => 'Section not found'], 404);
+            }
+
             $validated = $request->validate([
                 'student_ids' => 'required|array',
                 'student_ids.*' => 'exists:students,id'
             ]);
-            
+
             $newCount = $section->current_enrolled + count($validated['student_ids']);
-            
+
             if ($newCount > $section->max_capacity) {
                 return response()->json([
                     'message' => 'Adding these students would exceed the section capacity',
                     'available_slots' => $section->max_capacity - $section->current_enrolled
                 ], 422);
             }
-                   
-            DB::transaction(function() use ($section, $validated) {
+
+            DB::transaction(function () use ($section, $validated) {
                 $section->students()->syncWithoutDetaching($validated['student_ids']);
                 $section->increment('current_enrolled', count($validated['student_ids']));
             });
@@ -312,14 +337,24 @@ class SectionController extends Controller
     /**
      * Remove student from section
      */
-    public function removeStudent(Section $section, Student $student): JsonResponse
+    public function removeStudent($sectionId, $studentId): JsonResponse
     {
         try {
-            DB::transaction(function() use ($section, $student) {
+            $section = Section::find($sectionId);
+            if (!$section) {
+                return response()->json(['error' => 'Section not found'], 404);
+            }
+
+            $student = Student::find($studentId);
+            if (!$student) {
+                return response()->json(['error' => 'Student not found'], 404);
+            }
+
+            DB::transaction(function () use ($section, $student) {
                 $section->students()->detach($student->id);
                 $section->decrement('current_enrolled');
             });
-            
+
             return response()->json([
                 'message' => 'Student removed from section successfully'
             ]);
@@ -337,7 +372,7 @@ class SectionController extends Controller
             $courses = Course::select('id', 'code', 'title')->orderBy('code')->get();
             $semesters = ['1st', '2nd', 'Summer'];
             $yearLevels = [1, 2, 3, 4];
-            
+
             return response()->json([
                 'courses' => $courses,
                 'semesters' => $semesters,
