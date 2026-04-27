@@ -71,7 +71,11 @@ class Student extends Authenticatable
 
         if ($request->filled('skill')) {
             $skill = $request->string('skill');
-            $query->whereJsonContains('skills', $skill);
+            $query->where(function (Builder $q) use ($skill) {
+                $q->whereJsonContains('skills', $skill)
+                  ->orWhere('skills', 'like', '%"' . $skill . '"%')
+                  ->orWhere('skills', 'like', '%' . $skill . '%');
+            });
         }
 
         if ($request->filled('hobby')) {
