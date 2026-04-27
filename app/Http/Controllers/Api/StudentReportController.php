@@ -58,7 +58,15 @@ class StudentReportController extends Controller
             $pdf = Pdf::loadView('reports.students_pdf', [
                 'students' => $students,
                 'generatedAt' => now()->toDateTimeString(),
-            ])->setPaper('a4', 'landscape');
+            ])->setPaper('a4', 'landscape')
+             ->setOptions([
+                 'defaultFont' => 'sans-serif',
+                 'isHtml5ParserEnabled' => true,
+                 'isRemoteEnabled' => false,
+                 'isFontSubsettingEnabled' => true,
+                 'pdfBackend' => 'CPDF',
+                 'tempDir' => sys_get_temp_dir(),
+             ]);
 
             $filename = 'ccs-student-report-'.now()->format('Y-m-d_His').'.pdf';
 
